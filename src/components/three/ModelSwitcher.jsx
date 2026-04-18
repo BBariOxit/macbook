@@ -1,5 +1,5 @@
 import { PresentationControls } from "@react-three/drei"
-import { useRef } from "react"
+import { useRef, useCallback } from "react"
 import MacbookModel14 from "../models/Macbook-14"
 import MacbookModel16 from "../models/Macbook-16"
 import gsap from "gsap"
@@ -7,6 +7,17 @@ import { useGSAP } from "@gsap/react"
 
 const ANIMATION_DURATION = 1
 const OFFSET_DISTANCE = 5
+
+const setMeshesOpacity = (group, opacity) => {
+  if(!group) return
+
+  group.traverse((child) => {
+    if(child.isMesh) {
+      child.material.transparent = true
+      child.material.opacity = opacity
+    }
+  })
+}
 
 const fadeMeshes = (group, opacity) => {
   if(!group) return
@@ -26,10 +37,25 @@ const moveGroup = (group, x) => {
 }
 
 const ModelSitcher = ({ scale, isMobile }) => {
+  const SCALE_LARGE_DESKTOP = 0.08
+  const SCALE_LARGE_MOBILE = 0.05
+  
   const smallMacbookRef = useRef()
   const largeMacbookRef = useRef()
+  const hasInitialized = useRef(false)
 
-  const showLargeMacbook = scale === 0.08 || scale === 0.05
+  const showLargeMacbook = scale === SCALE_LARGE_DESKTOP || scale === SCALE_LARGE_MOBILE
+
+  // Set initial state immediately when the small macbook group mounts
+  const smallMacbookCallbackRef = useCallback((node) => {
+    smallMacbookRef.current = node
+    if(node && !hasInitialized.current) {
+      // Default view is the large macbook (16"), so hide the small one immediately
+      node.position.x = -OFFSET_DISTANCE
+      setMeshesOpacity(node, 0)
+      hasInitialized.current = true
+    }
+  }, [])
 
   useGSAP(() => {
     if(showLargeMacbook) {
@@ -65,7 +91,7 @@ const ModelSitcher = ({ scale, isMobile }) => {
       </PresentationControls>
 
       <PresentationControls {...controlsConfig}>
-        <group ref={smallMacbookRef}>
+        <group ref={smallMacbookCallbackRef}>
           <MacbookModel14 scale={isMobile ? 0.03 : 0.06} />
         </group>
       </PresentationControls>
